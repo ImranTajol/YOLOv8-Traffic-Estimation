@@ -39,7 +39,7 @@ font_color = (255, 255, 255)    # White color for text
 background_color = (0, 0, 255)  # Red background for text
         
 # Open the video
-cap = cv2.VideoCapture('sample2_video.mp4')
+cap = cv2.VideoCapture('videos\\sample_video.mp4')
 ori_mask = cv2.imread('images\\Road_Mask_Test.jpg')
 # cap = cv2.VideoCapture(1)
 
