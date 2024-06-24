@@ -1,9 +1,12 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import torch
 
 # Load the best fine-tuned YOLOv8 model
 best_model = YOLO('models/best.pt')
+# model = YOLO('yolov8n.pt')
+# yaml_file_path = 'vehicle_with_class\data.yaml'
 
 # Define the threshold for considering traffic as heavy
 heavy_traffic_threshold = 10
@@ -13,7 +16,8 @@ vertices1 = np.array([(465, 350), (609, 350), (510, 630), (2, 630)], dtype=np.in
 vertices2 = np.array([(678, 350), (815, 350), (1203, 630), (743, 630)], dtype=np.int32)
 
 # Define the vertical range for the slice and lane threshold
-x1, x2 = 325, 635 
+# x1, x2 = 325, 635
+x1, x2 = 35, 635
 lane_threshold = 609
 
 # Define the positions for the text annotations on the image
@@ -30,6 +34,7 @@ background_color = (0, 0, 255)  # Red background for text
         
 # Open the video
 cap = cv2.VideoCapture('sample_video.mp4')
+# cap = cv2.VideoCapture(1)
 
 # Define the codec and create VideoWriter object
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -41,6 +46,8 @@ while cap.isOpened():
     ret, frame = cap.read()
     if ret:
         # Create a copy of the original frame to modify
+        # frame = cv2.resize(ori_size,(700,500))
+        
         detection_frame = frame.copy()
     
         # Black out the regions outside the specified vertical range
@@ -113,6 +120,7 @@ while cap.isOpened():
                     font, font_scale, font_color, 2, cv2.LINE_AA)
 
         # Display the processed frame
+        cv2.imshow('Detection Frame', detection_frame)
         cv2.imshow('Real-time Traffic Analysis', processed_frame)
 
         # Press Q on keyboard to exit the loop

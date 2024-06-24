@@ -1,0 +1,5 @@
+#ignore virtual env
+env/
+
+#ignore old dataset
+vehicle_with_class/
