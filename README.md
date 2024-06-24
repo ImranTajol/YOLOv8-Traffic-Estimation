@@ -15,3 +15,13 @@ Project aims to estimate the traffic flow by filtering the desired region and ap
 - **`README.md`**: The document you are reading that offers an insightful overview and essential information about the project.
 - **`mask.png`**: mask image to select the desired region for image detection 
 - **`real_time_traffic_analysis.py`**: The Python script for deploying the YOLOv8 model to estimate traffic density in real-time on a local system.
+
+- **`Guide To Clone:`**
+- 1. Create directory
+  2. cd to directory
+  3. git clone https://github.com/ImranTajol/YOLOv8-Traffic-Estimation
+  4. Create virtual environment
+     CMD command: python -m venv your_venv_name... folder with your_venv_name should be create
+  5. CMD command: your_venv_name/Scripts/activate --> to activate the virtual env
+  6. pip install -r requirements.txt
+  7. Have fun.....
