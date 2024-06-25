@@ -11,7 +11,7 @@ best_model = YOLO('models/best.pt')
 # yaml_file_path = 'vehicle_with_class\data.yaml'
 
 # Define the threshold for considering traffic as heavy
-heavy_traffic_threshold = 10
+heavy_traffic_threshold = 5
 
 # Define the vertices for the quadrilaterals
 vertices1 = np.array([(465, 350), (609, 350), (510, 630), (2, 630)], dtype=np.int32)
@@ -19,13 +19,8 @@ vertices2 = np.array([(678, 350), (815, 350), (1203, 630), (743, 630)], dtype=np
 
 # Define the vertical range for the slice and lane threshold
 x1, x2 = 325, 635
-# lane_threshold = 609
 
 # Define the positions for the text annotations on the image
-# text_position_left_lane = (10, 50)
-# text_position_right_lane = (820, 50)
-# intensity_position_left_lane = (10, 100)
-# intensity_position_right_lane = (820, 100)
 text_position_left_lane_pct = (0.01, 0.05)  # 1% from the left, 5% from the top
 intensity_position_left_lane_pct = (0.01, 0.1)  # 1% from the left, 10% from the top
 
@@ -62,6 +57,8 @@ while cap.isOpened():
         frame_width = frame.shape[1]
         frame_height = frame.shape[0]
 
+        window_area = frame_width * frame_height
+
         lane_threshold = frame_width/2
 
         mask = cv2.resize(ori_mask, (frame_width,frame_height))
@@ -78,15 +75,43 @@ while cap.isOpened():
         results = best_model.predict(filtered_frame, imgsz=640, conf=0.4)
         post_predict_frame = results[0].plot(line_width=1) 
 
+        constant_width = 50
+        constant_height = 50
+
          # Draw bounding boxes and labels on the main frame
         for result in results:
             for box in result.boxes.data:
                 x1, y1, x2, y2, conf, cls = box[:6]
                 if int(cls) == 2:  # Class 2 corresponds to 'car' in COCO dataset
-                    x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    label = f'Car {conf:.2f}'
-                    cv2.putText(frame, label, (x1, y1 - 10), font, 0.9, (36, 255, 12), 2)
+                    # x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+                    # box_area = (x2-x1)*(y2-y1)
+                    # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    # label = f'Car'
+                    # cv2.putText(frame, label, (x1, y1 - 10), font, 0.9, (36, 255, 12), 2)
+
+                    # Calculate the center of the detected bounding box
+                    center_x = int((x1 + x2) / 2)
+                    center_y = int((y1 + y2) / 2)
+
+                    # Calculate the coordinates of the constant-sized bounding box
+                    new_x1 = center_x - constant_width // 2
+                    new_y1 = center_y - constant_height // 2
+                    new_x2 = center_x + constant_width // 2
+                    new_y2 = center_y + constant_height // 2
+
+                    # Ensure the bounding box is within the frame boundaries
+                    new_x1 = max(new_x1, 0)
+                    new_y1 = max(new_y1, 0)
+                    new_x2 = min(new_x2, frame.shape[1])
+                    new_y2 = min(new_y2, frame.shape[0])
+                    box_area = (new_x2-new_x1)*(new_y2-new_y1)
+
+                    # Draw the constant-sized bounding box
+                    cv2.rectangle(frame, (new_x1, new_y1), (new_x2, new_y2), (0, 255, 0), 2)
+                    label = 'Car'
+                    cv2.putText(frame, label, (new_x1, new_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 2)
+
+
         
         # Draw the quadrilaterals on the processed frame
         cv2.polylines(frame, [vertices1], isClosed=True, color=(0, 255, 0), thickness=2)
@@ -98,19 +123,17 @@ while cap.isOpened():
         # Initialize counters for vehicles in each lane
         vehicles_in_left_lane = 0
         vehicles_in_right_lane = 0
+        total_box_area = 0
 
         # Loop through each bounding box to count vehicles in each lane
         for box in bounding_boxes.xyxy:
-            # Check if the vehicle is in the left lane based on the x-coordinate of the bounding box
-            if box[0] < lane_threshold:
-                vehicles_in_left_lane += 1
-            else:
-                vehicles_in_right_lane += 1
+            vehicles_in_left_lane += 1
+            total_box_area += box_area
+            vehicles_in_right_lane += 1
+            total_box_area += box_area
                 
         # Determine the traffic intensity for the left lane
         traffic_intensity_left = "Heavy" if vehicles_in_left_lane > heavy_traffic_threshold else "Smooth"
-        # Determine the traffic intensity for the right lane
-        traffic_intensity_right = "Heavy" if vehicles_in_right_lane > heavy_traffic_threshold else "Smooth"
 
         # Calculate the actual positions based on the frame size
         text_position_left_lane = (int(frame_width * text_position_left_lane_pct[0]), int(frame_height * text_position_left_lane_pct[1]))
@@ -123,7 +146,7 @@ while cap.isOpened():
                       (text_position_left_lane[0] + 460, text_position_left_lane[1] + 10), background_color, -1)
 
         # Add the vehicle count text on top of the rectangle for the left lane
-        cv2.putText(frame, f'Vehicles in Left Lane: {vehicles_in_left_lane}', text_position_left_lane, 
+        cv2.putText(frame, f'Total boxes area: {total_box_area}', text_position_left_lane, 
                     font, font_scale, font_color, 1, cv2.LINE_AA)
 
         # Add a background rectangle for the left lane traffic intensity
@@ -131,7 +154,7 @@ while cap.isOpened():
                       (intensity_position_left_lane[0] + 460, intensity_position_left_lane[1] + 10), background_color, -1)
 
         # Add the traffic intensity text on top of the rectangle for the left lane
-        cv2.putText(frame, f'Traffic Intensity: {traffic_intensity_left}', intensity_position_left_lane, 
+        cv2.putText(frame, f'Window Size: {window_area}', intensity_position_left_lane, 
                     font, font_scale, font_color, 2, cv2.LINE_AA)
 
         # Add a background rectangle for the right lane vehicle count
@@ -139,7 +162,7 @@ while cap.isOpened():
                       (text_position_right_lane[0] + 460, text_position_right_lane[1] + 10), background_color, -1)
 
         # Add the vehicle count text on top of the rectangle for the right lane
-        cv2.putText(frame, f'Vehicles in Right Lane: {vehicles_in_right_lane}', text_position_right_lane, 
+        cv2.putText(frame, f'Total Vehicles: {vehicles_in_right_lane}', text_position_right_lane, 
                     font, font_scale, font_color, 2, cv2.LINE_AA)
 
         # Add a background rectangle for the right lane traffic intensity
@@ -147,13 +170,13 @@ while cap.isOpened():
                       (intensity_position_right_lane[0] + 460, intensity_position_right_lane[1] + 10), background_color, -1)
 
         # Add the traffic intensity text on top of the rectangle for the right lane
-        cv2.putText(frame, f'Traffic Intensity: {traffic_intensity_right}', intensity_position_right_lane, 
+        cv2.putText(frame, f'Traffic Intensity: {traffic_intensity_left}', intensity_position_right_lane, 
                     font, font_scale, font_color, 2, cv2.LINE_AA)
 
         # Display the processed frame
         # cv2.imshow('Detection Frame', detection_frame)
         cv2.imshow('Filtered Frame', filtered_frame)
-        cv2.imshow('Post Predict', post_predict_frame)
+        # cv2.imshow('Post Predict', post_predict_frame)
         cv2.imshow('Real-time Traffic Analysis', frame)
 
         # Press Q on keyboard to exit the loop
